@@ -30,10 +30,28 @@ async function generate() {
   statusEl.textContent = "Generating...";
   resultsEl.innerHTML = "";
 
-  const systemPrompt = `You are a math problem generator. Given a topic/prompt, generate exactly ${count} distinct math problems matching it.
-Respond with ONLY a JSON array (no markdown fences, no commentary), where each element is an object:
-{"question": "...", "answer": "..."}
-The "answer" should be a short final answer, and may include a brief one-line explanation if helpful.`;
+  const systemPrompt = `You are a math problem generator. Given a topic/prompt, generate exactly ${count} distinct multiple-choice math problems matching it.
+
+Each question must have exactly 4 answer choices, exactly one of which is correct.
+Each question must include a detailed step-by-step solution.
+Each incorrect choice must include an explanation of the specific mistake or misconception that leads to it.
+Verify all numbers and answer choices are mathematically correct and consistent before outputting.
+
+Do not include any internal reasoning, revisions, notes, or commentary outside the JSON. Do not use markdown code fences.
+Return ONLY a valid JSON array, where each element has exactly this shape:
+
+{
+  "question": "string",
+  "choices": [
+    {"label": "A", "text": "string", "correct": true, "explanation": ""},
+    {"label": "B", "text": "string", "correct": false, "explanation": "why this is wrong"},
+    {"label": "C", "text": "string", "correct": false, "explanation": "why this is wrong"},
+    {"label": "D", "text": "string", "correct": false, "explanation": "why this is wrong"}
+  ],
+  "solution": "detailed step-by-step solution string"
+}
+
+Exactly one choice per question must have "correct": true; the rest must be "correct": false with a non-empty "explanation". The correct choice's "explanation" should be an empty string.`;
 
   try {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -93,15 +111,30 @@ function parseProblems(raw) {
 
 function renderProblems(problems) {
   resultsEl.innerHTML = problems
-    .map((p, i) => `
-      <div class="problem">
-        <span class="num">${i + 1}.</span>${escapeHtml(p.question || "")}
-        <details>
-          <summary>Show answer</summary>
-          <div>${escapeHtml(p.answer || "")}</div>
-        </details>
-      </div>
-    `)
+    .map((p, i) => {
+      const choices = Array.isArray(p.choices) ? p.choices : [];
+      const choicesHtml = choices
+        .map((c) => `
+          <div class="choice ${c.correct ? "correct" : ""}">
+            <span class="choice-label">${escapeHtml(c.label || "")}.</span>
+            ${escapeHtml(c.text || "")}
+            ${c.correct ? '<span class="tag">correct</span>' : ""}
+            ${!c.correct && c.explanation ? `<div class="explanation">${escapeHtml(c.explanation)}</div>` : ""}
+          </div>
+        `)
+        .join("");
+
+      return `
+        <div class="problem">
+          <span class="num">${i + 1}.</span>${escapeHtml(p.question || "")}
+          <div class="choices">${choicesHtml}</div>
+          <details>
+            <summary>Show full solution</summary>
+            <div>${escapeHtml(p.solution || "")}</div>
+          </details>
+        </div>
+      `;
+    })
     .join("");
 }
 
