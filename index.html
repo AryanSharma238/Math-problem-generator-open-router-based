@@ -13,7 +13,7 @@
 
     <section class="card">
       <label for="apiKey">OpenRouter API Key</label>
-      <input type="password" id="apiKey" placeholder="sk-or-v1-...">
+      <input type="password" id="apiKey" placeholder="sk-or-v1-..." autocapitalize="off" autocorrect="off" spellcheck="false">
       <p class="hint">
         Get a free key at <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai/keys</a>.
         Stored only in your browser (localStorage) — never sent anywhere except OpenRouter.
@@ -21,9 +21,9 @@
 
       <label for="model">Model</label>
       <select id="model">
-        <option value="google/gemini-2.0-flash-exp:free">Gemini 2.0 Flash (free, recommended)</option>
-        <option value="meta-llama/llama-3.3-70b-instruct:free">Llama 3.3 70B (free)</option>
-        <option value="nvidia/nemotron-3-ultra-550b-a55b:free">Nemotron Ultra 550B (free, slower)</option>
+        <option value="nvidia/nemotron-3-ultra-550b-a55b:free">Nemotron 3 Ultra 550B (free, recommended)</option>
+        <option value="poolside/laguna-s-2.1:free">Poolside Laguna S 2.1 (free)</option>
+        <option value="cohere/north-mini-code:free">Cohere North Mini Code (free)</option>
       </select>
 
       <label for="prompt">What kind of problems?</label>
