@@ -37,7 +37,8 @@ Each question must include a detailed step-by-step solution.
 Each incorrect choice must include an explanation of the specific mistake or misconception that leads to it.
 Verify all numbers and answer choices are mathematically correct and consistent before outputting.
 
-Do not include any internal reasoning, revisions, notes, or commentary outside the JSON. Do not use markdown code fences.
+The "question" field must contain ONLY the question text — never embed the answer choices inside it.
+Do not include any internal reasoning, revisions, second-guessing, notes, or commentary anywhere in the output, including inside string fields. Do not use markdown code fences.
 Return ONLY a valid JSON array, where each element has exactly this shape:
 
 {
@@ -109,33 +110,78 @@ function parseProblems(raw) {
   return [];
 }
 
+let currentProblems = [];
+
 function renderProblems(problems) {
+  currentProblems = problems;
+
   resultsEl.innerHTML = problems
-    .map((p, i) => {
+    .map((p, pi) => {
       const choices = Array.isArray(p.choices) ? p.choices : [];
       const choicesHtml = choices
-        .map((c) => `
-          <div class="choice ${c.correct ? "correct" : ""}">
-            <span class="choice-label">${escapeHtml(c.label || "")}.</span>
-            ${escapeHtml(c.text || "")}
-            ${c.correct ? '<span class="tag">correct</span>' : ""}
-            ${!c.correct && c.explanation ? `<div class="explanation">${escapeHtml(c.explanation)}</div>` : ""}
-          </div>
-        `)
+        .map(
+          (c, ci) => `
+            <button class="choice-btn" data-problem="${pi}" data-choice="${ci}">
+              <span class="choice-label">${escapeHtml(c.label || "")}</span>
+              ${escapeHtml(c.text || "")}
+            </button>
+          `
+        )
         .join("");
 
       return `
-        <div class="problem">
-          <span class="num">${i + 1}.</span>${escapeHtml(p.question || "")}
+        <div class="problem" data-problem="${pi}">
+          <span class="num">${pi + 1}.</span>${escapeHtml(p.question || "")}
           <div class="choices">${choicesHtml}</div>
-          <details>
-            <summary>Show full solution</summary>
-            <div>${escapeHtml(p.solution || "")}</div>
-          </details>
+          <p class="feedback" id="feedback-${pi}"></p>
+          <button class="steps-toggle" data-problem="${pi}">Show step-by-step solution</button>
+          <div class="steps" id="steps-${pi}" hidden>${escapeHtml(p.solution || "")}</div>
         </div>
       `;
     })
     .join("");
+}
+
+resultsEl.addEventListener("click", (e) => {
+  const choiceBtn = e.target.closest(".choice-btn");
+  if (choiceBtn) {
+    handleChoiceClick(choiceBtn);
+    return;
+  }
+  const stepsBtn = e.target.closest(".steps-toggle");
+  if (stepsBtn) {
+    const pi = stepsBtn.dataset.problem;
+    const stepsEl = document.getElementById(`steps-${pi}`);
+    stepsEl.hidden = !stepsEl.hidden;
+    stepsBtn.textContent = stepsEl.hidden ? "Show step-by-step solution" : "Hide step-by-step solution";
+  }
+});
+
+function handleChoiceClick(choiceBtn) {
+  const pi = parseInt(choiceBtn.dataset.problem, 10);
+  const ci = parseInt(choiceBtn.dataset.choice, 10);
+  const problem = currentProblems[pi];
+  const choice = problem.choices[ci];
+  const problemEl = document.querySelector(`.problem[data-problem="${pi}"]`);
+  const feedbackEl = document.getElementById(`feedback-${pi}`);
+
+  if (problemEl.dataset.answered === "true") return;
+  problemEl.dataset.answered = "true";
+
+  problemEl.querySelectorAll(".choice-btn").forEach((btn) => {
+    const c = problem.choices[parseInt(btn.dataset.choice, 10)];
+    if (c.correct) btn.classList.add("correct");
+    btn.disabled = true;
+  });
+
+  if (choice.correct) {
+    feedbackEl.textContent = "Correct!";
+    feedbackEl.className = "feedback correct-text";
+  } else {
+    choiceBtn.classList.add("incorrect");
+    feedbackEl.textContent = choice.explanation || "That's not right.";
+    feedbackEl.className = "feedback incorrect-text";
+  }
 }
 
 function escapeHtml(str) {
